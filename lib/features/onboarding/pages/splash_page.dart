@@ -33,6 +33,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   static const Color textMuted = AppColors.onDarkMuted;
   static const Color textDim = AppColors.onDarkDim;
 
+  static const String _logoAsset = 'assets/images/logo.jpg';
+
   static const List<String> _statusMessages = [
     'Menyiapkan sistem keamanan...',
     'Menghubungkan sensor CO...',
@@ -90,6 +92,13 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       if (!mounted) return;
       _goNext();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Muat logo lebih awal supaya tidak muncul tiba-tiba saat animasi.
+    precacheImage(const AssetImage(_logoAsset), context);
   }
 
   void _goNext() {
@@ -238,7 +247,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   // ---------------------------------------------------------------- LOGO
 
   Widget _buildLogo() {
-    const double size = 150;
+    const double size = 160;
     return AnimatedBuilder(
       animation: Listenable.merge([_logoAnim, _ambientController]),
       builder: (context, _) {
@@ -262,26 +271,17 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                   Transform.rotate(
                     angle: amb * 2 * math.pi,
                     child: CustomPaint(
-                      size: const Size(190, 190),
+                      size: const Size(204, 204),
                       painter: _OrbitPainter(mint: mint, gold: gold),
                     ),
                   ),
 
-                  // Lingkaran logo
+                  // Logo GasGuard (bulat, dengan cahaya yang berdenyut)
                   Container(
                     width: size,
                     height: size,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.primaryDeep, Color(0xFF062016)],
-                      ),
-                      border: Border.all(
-                        color: gold.withValues(alpha: 0.7),
-                        width: 1.2,
-                      ),
                       boxShadow: [
                         BoxShadow(
                           color: emerald.withValues(
@@ -292,30 +292,19 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                         ),
                       ],
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 124,
-                          height: 124,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: mint.withValues(alpha: 0.18),
-                              width: 1,
-                            ),
-                          ),
+                    // Dipotong bulat dan sedikit diperbesar agar tepi hitam
+                    // gambar tidak terlihat.
+                    child: ClipOval(
+                      child: Transform.scale(
+                        scale: 1.1,
+                        child: Image.asset(
+                          _logoAsset,
+                          width: size,
+                          height: size,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallbackLogo(),
                         ),
-                        const Icon(Icons.shield_rounded, color: mint, size: 100),
-                        Transform.translate(
-                          offset: Offset(0, 1.5 * math.sin(amb * 2 * math.pi)),
-                          child: const Icon(
-                            Icons.directions_car_rounded,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -324,6 +313,28 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+
+  /// Tampil bila berkas logo belum ditemukan (ikon perisai + mobil lama).
+  Widget _fallbackLogo() {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primaryDeep, Color(0xFF062016)],
+        ),
+        border: Border.all(color: gold.withValues(alpha: 0.7), width: 1.2),
+      ),
+      child: const Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(Icons.shield_rounded, color: mint, size: 100),
+          Icon(Icons.directions_car_rounded, color: Colors.white, size: 48),
+        ],
+      ),
     );
   }
 

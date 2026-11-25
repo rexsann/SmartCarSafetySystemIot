@@ -1,19 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Warna lokal, sama dengan halaman lain. Kalau mau, pindahkan ke AppColors.
-class _C {
-  static const header = Color(0xFF0B3A3C);
-  static const background = Color(0xFFF2F7F9);
-  static const border = Color(0xFFE3EBEF);
-  static const divider = Color(0xFFE9EFF2);
-  static const iconBg = Color(0xFFE6F1F5);
-  static const iconColor = Color(0xFF123B3F);
-  static const title = Color(0xFF12292E);
-  static const subtitle = Color(0xFF8A9AA1);
-  static const green = Color(0xFF0F9D77);
-  static const accent = Color(0xFF2DBE75);
-  static const danger = Color(0xFFFF2D4B);
-}
+import '../../../core/constants/app_colors.dart';
+
+const Color _track = Color(0xFFE6F0EA);
+const Color _switchOff = Color(0xFFCBD6DB);
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -24,11 +14,10 @@ class NotificationSettingsPage extends StatefulWidget {
 }
 
 class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
-  // TODO: simpan & baca nilai ini dari shared_preferences / backend.
+  // TODO: simpan dan baca nilai ini dari shared_preferences.
   bool _enabled = true;
   bool _coAlert = true;
-  bool _systemStatus = true;
-  bool _location = false;
+  bool _deviceStatus = true;
   bool _sound = true;
   bool _vibration = true;
   double _volume = 0.8;
@@ -36,10 +25,47 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   static const _tones = ['Sirene', 'Beep', 'Lonceng', 'Klakson'];
 
+  // Peringatan CO menyangkut keselamatan, jadi minta konfirmasi saat dimatikan.
+  Future<bool> _confirmOff(String title) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: const Text(
+          'Anda tidak akan diberi tahu saat kadar CO berbahaya.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Matikan'),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  Future<void> _setEnabled(bool v) async {
+    if (!v && !await _confirmOff('Matikan semua notifikasi?')) return;
+    if (!mounted) return;
+    setState(() => _enabled = v);
+  }
+
+  Future<void> _setCoAlert(bool v) async {
+    if (!v && !await _confirmOff('Matikan peringatan CO?')) return;
+    if (!mounted) return;
+    setState(() => _coAlert = v);
+  }
+
   Future<void> _pickTone() async {
     final result = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -55,35 +81,36 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _C.border,
+                    color: AppColors.border,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
-                'Nada peringatan',
+                'Pilih nada peringatan',
                 style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: _C.title,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               for (final t in _tones)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  minVerticalPadding: 14,
                   title: Text(
                     t,
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight:
-                          t == _tone ? FontWeight.w700 : FontWeight.w500,
-                      color: _C.title,
+                      fontSize: 15.5,
+                      fontWeight: t == _tone ? FontWeight.w800 : FontWeight.w500,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   trailing: t == _tone
-                      ? const Icon(Icons.check_rounded, color: _C.green)
+                      ? const Icon(Icons.check_circle_rounded,
+                          color: AppColors.primary)
                       : null,
                   onTap: () => Navigator.pop(context, t),
                 ),
@@ -95,12 +122,41 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     if (result != null) setState(() => _tone = result);
   }
 
+  void _sendTest() {
+    // TODO: kirim notifikasi uji coba sungguhan.
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.darkMid,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Notifikasi uji dikirim',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.header,
+      backgroundColor: AppColors.darkMid,
       appBar: AppBar(
-        backgroundColor: _C.header,
+        backgroundColor: AppColors.darkMid,
         foregroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -108,29 +164,26 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         titleSpacing: 0,
         toolbarHeight: 72,
         leading: IconButton(
+          tooltip: 'Kembali',
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.maybePop(context),
         ),
-        title: Column(
+        title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Notifikasi',
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text(
-              'Atur notifikasi & suara',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: Colors.white.withAlpha(165),
-              ),
+              'Atur pesan dan suara peringatan',
+              style: TextStyle(fontSize: 13, color: AppColors.onDarkMuted),
             ),
           ],
         ),
@@ -138,23 +191,30 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       body: Container(
         width: double.infinity,
         decoration: const BoxDecoration(
-          color: _C.background,
+          color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
           children: [
             _Group(
               children: [
                 _SwitchRow(
                   icon: Icons.notifications_active_outlined,
-                  title: 'Aktifkan notifikasi',
-                  subtitle: 'Terima peringatan dari perangkat',
+                  title: 'Notifikasi',
+                  subtitle: 'Terima pesan saat ada bahaya atau masalah',
                   value: _enabled,
-                  onChanged: (v) => setState(() => _enabled = v),
+                  onChanged: _setEnabled,
                 ),
               ],
             ),
+            if (!_enabled) ...[
+              const SizedBox(height: 12),
+              const _WarningNote(
+                'Notifikasi sedang mati. Anda tidak akan diberi tahu saat '
+                'kadar CO berbahaya.',
+              ),
+            ],
             const SizedBox(height: 22),
             AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
@@ -164,103 +224,95 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionLabel('Jenis notifikasi'),
+                    const _SectionTitle('Pesan yang diterima'),
+                    const SizedBox(height: 10),
                     _Group(
                       children: [
                         _SwitchRow(
                           icon: Icons.warning_amber_rounded,
                           title: 'Peringatan CO',
-                          subtitle: 'Saat kadar gas melewati batas',
+                          subtitle: 'Saat kadar CO melewati batas. '
+                              'Sebaiknya tetap aktif.',
                           value: _coAlert,
-                          iconColor: _C.danger,
-                          onChanged: (v) => setState(() => _coAlert = v),
+                          color: AppColors.danger,
+                          onChanged: _setCoAlert,
                         ),
                         _SwitchRow(
-                          icon: Icons.wifi_rounded,
-                          title: 'Status sistem',
-                          subtitle: 'Koneksi & kondisi perangkat',
-                          value: _systemStatus,
-                          onChanged: (v) => setState(() => _systemStatus = v),
-                        ),
-                        _SwitchRow(
-                          icon: Icons.location_on_outlined,
-                          title: 'Lokasi kendaraan',
-                          subtitle: 'Pembaruan lokasi GPS',
-                          value: _location,
-                          onChanged: (v) => setState(() => _location = v),
+                          icon: Icons.developer_board_rounded,
+                          title: 'Status perangkat',
+                          subtitle: 'Saat ESP32 terputus atau bermasalah',
+                          value: _deviceStatus,
+                          onChanged: (v) => setState(() => _deviceStatus = v),
                         ),
                       ],
                     ),
                     const SizedBox(height: 22),
-                    const _SectionLabel('Suara & getaran'),
+                    const _SectionTitle('Suara dan getaran'),
+                    const SizedBox(height: 10),
                     _Group(
                       children: [
                         _SwitchRow(
                           icon: Icons.volume_up_outlined,
                           title: 'Suara',
-                          subtitle: 'Bunyi saat notifikasi masuk',
+                          subtitle: 'Bunyi saat pesan masuk',
                           value: _sound,
                           onChanged: (v) => setState(() => _sound = v),
                         ),
                         _SwitchRow(
                           icon: Icons.vibration_rounded,
                           title: 'Getaran',
-                          subtitle: 'Getar saat notifikasi masuk',
+                          subtitle: 'Getar saat pesan masuk',
                           value: _vibration,
                           onChanged: (v) => setState(() => _vibration = v),
                         ),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOut,
-                          child: _sound
-                              ? Column(
-                                  children: [
-                                    _NavRow(
-                                      icon: Icons.music_note_rounded,
-                                      title: 'Nada peringatan',
-                                      value: _tone,
-                                      onTap: _pickTone,
-                                    ),
-                                    _VolumeRow(
-                                      value: _volume,
-                                      onChanged: (v) =>
-                                          setState(() => _volume = v),
-                                    ),
-                                  ],
-                                )
-                              : const SizedBox(width: double.infinity),
-                        ),
+                        if (_sound) ...[
+                          _NavRow(
+                            icon: Icons.music_note_rounded,
+                            title: 'Nada peringatan',
+                            value: _tone,
+                            onTap: _pickTone,
+                          ),
+                          _VolumeRow(
+                            value: _volume,
+                            onChanged: (v) => setState(() => _volume = v),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 22),
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 52,
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          // TODO: kirim notifikasi uji coba.
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Notifikasi uji dikirim'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                        onPressed: _sendTest,
                         icon: const Icon(Icons.send_rounded, size: 18),
                         label: const Text(
-                          'Kirim notifikasi uji',
+                          'Coba kirim notifikasi',
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: _C.header,
-                          side: const BorderSide(color: _C.border),
-                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                          ),
+                          backgroundColor: AppColors.surface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
+                        ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
+                      child: Text(
+                        'Gunakan untuk memastikan notifikasi berfungsi di '
+                        'ponsel ini.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ),
@@ -277,22 +329,68 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
 // ───────────────────────── Komponen ─────────────────────────
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
 
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: _C.subtitle,
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 18,
+          decoration: BoxDecoration(
+            gradient: AppColors.goldGradient,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WarningNote extends StatelessWidget {
+  const _WarningNote(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              color: AppColors.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -307,53 +405,55 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _C.border),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: _C.header.withAlpha(12),
+            color: AppColors.primaryDark.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              const Divider(
-                height: 1,
-                thickness: 1,
-                indent: 68,
-                color: _C.divider,
-              ),
-            children[i],
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0)
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 70,
+                  color: _track,
+                ),
+              children[i],
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _IconBox extends StatelessWidget {
-  const _IconBox(this.icon, {this.color});
+class _IconCircle extends StatelessWidget {
+  const _IconCircle(this.icon, {this.color = AppColors.primary});
 
   final IconData icon;
-  final Color? color;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? _C.iconColor;
     return Container(
-      width: 40,
-      height: 40,
+      width: 42,
+      height: 42,
       decoration: BoxDecoration(
-        color: color == null ? _C.iconBg : c.withAlpha(30),
-        borderRadius: BorderRadius.circular(13),
+        color: color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 20, color: c),
+      child: Icon(icon, size: 22, color: color),
     );
   }
 }
@@ -365,7 +465,7 @@ class _SwitchRow extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.onChanged,
-    this.iconColor,
+    this.color = AppColors.primary,
   });
 
   final IconData icon;
@@ -373,51 +473,60 @@ class _SwitchRow extends StatelessWidget {
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final Color? iconColor;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-        child: Row(
-          children: [
-            _IconBox(icon, color: iconColor),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _C.title,
-                    ),
+    return MergeSemantics(
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 68),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+            child: Row(
+              children: [
+                _IconCircle(icon, color: color),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.3,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 12, color: _C.subtitle),
+                ),
+                Switch(
+                  value: value,
+                  onChanged: onChanged,
+                  thumbColor: const WidgetStatePropertyAll(Colors.white),
+                  trackColor: WidgetStateProperty.resolveWith(
+                    (s) => s.contains(WidgetState.selected)
+                        ? AppColors.primary
+                        : _switchOff,
                   ),
-                ],
-              ),
+                  trackOutlineColor:
+                      const WidgetStatePropertyAll(Colors.transparent),
+                ),
+              ],
             ),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              thumbColor: const WidgetStatePropertyAll(Colors.white),
-              trackColor: WidgetStateProperty.resolveWith(
-                (s) => s.contains(WidgetState.selected)
-                    ? _C.accent
-                    : const Color(0xFFCBD6DB),
-              ),
-              trackOutlineColor:
-                  const WidgetStatePropertyAll(Colors.transparent),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -441,36 +550,42 @@ class _NavRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Divider(height: 1, thickness: 1, indent: 68, color: _C.divider),
+        const Divider(height: 1, thickness: 1, indent: 70, color: _track),
         InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              children: [
-                _IconBox(icon),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _C.title,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  _IconCircle(icon),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: _C.green,
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded, color: _C.subtitle),
-              ],
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -489,34 +604,51 @@ class _VolumeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Divider(height: 1, thickness: 1, indent: 68, color: _C.divider),
+        const Divider(height: 1, thickness: 1, indent: 70, color: _track),
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
           child: Row(
             children: [
-              const _IconBox(Icons.volume_down_rounded),
-              const SizedBox(width: 6),
+              const _IconCircle(Icons.volume_down_rounded),
+              const SizedBox(width: 14),
               Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    activeTrackColor: _C.accent,
-                    inactiveTrackColor: _C.divider,
-                    thumbColor: _C.accent,
-                    overlayColor: _C.accent.withAlpha(30),
-                  ),
-                  child: Slider(value: value, onChanged: onChanged),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Volume',
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 5,
+                        activeTrackColor: AppColors.primary,
+                        inactiveTrackColor: _track,
+                        thumbColor: AppColors.primary,
+                        overlayColor: AppColors.primary.withValues(alpha: 0.14),
+                      ),
+                      child: Slider(
+                        value: value,
+                        label: '${(value * 100).round()}%',
+                        onChanged: onChanged,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(
-                width: 40,
+                width: 44,
                 child: Text(
                   '${(value * 100).round()}%',
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: _C.subtitle,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),

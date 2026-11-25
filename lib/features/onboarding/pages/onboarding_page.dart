@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../navigation/pages/main_navigation_page.dart';
 
+// Bayangan tipis agar teks putih tetap terbaca di atas bagian gambar yang terang.
+final List<Shadow> _textShadow = [
+  Shadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 12),
+];
+
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
 
@@ -14,6 +19,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final PageController _controller = PageController();
   int _currentPage = 0;
 
+  // alignY       : bagian gambar yang ditampilkan saat dipotong (-1 atas, 1 bawah).
+  // heightFactor : tinggi gambar sebagai pecahan tinggi layar (1 = layar penuh).
+  // fadeStart    : di mana gradasi gelap mulai muncul (0 = atas, 1 = bawah gambar).
   final List<_OnboardingItem> _items = [
     _OnboardingItem(
       image: 'assets/images/onboarding_car.jpg',
@@ -23,6 +31,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'monoksida di dalam kabin mobil secara langsung.',
       icon: Icons.sensors_rounded,
       accent: AppColors.primary,
+      alignY: -0.1,
     ),
     _OnboardingItem(
       image: 'assets/images/onboarding_phone.jpg',
@@ -32,6 +41,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'dengan riwayat kadar CO dan informasi peringatan.',
       icon: Icons.phone_iphone_rounded,
       accent: AppColors.info,
+      alignY: -0.5,
     ),
     _OnboardingItem(
       image: 'assets/images/onboarding_alarm.jpg',
@@ -42,6 +52,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'bisa mematikan buzzer melalui aplikasi.',
       icon: Icons.notifications_active_rounded,
       accent: AppColors.warning,
+      alignY: 0.1,
     ),
     _OnboardingItem(
       image: 'assets/images/onboarding_success.jpg',
@@ -50,7 +61,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       description: 'Sekarang Anda sudah siap menggunakan Smart Car Safety.',
       icon: Icons.verified_user_rounded,
       accent: AppColors.gold,
-      contain: true,
+      alignY: 0,
+      heightFactor: 0.62,
+      fadeStart: 0.45,
     ),
   ];
 
@@ -89,62 +102,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final accent = _items[_currentPage].accent;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Muat semua gambar di awal supaya perpindahan halaman mulus.
+    for (final item in _items) {
+      precacheImage(AssetImage(item.image), context);
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    // Latar polos yang sama dengan warna ujung gradasi gambar,
+    // jadi gambar menyatu tanpa garis batas.
     return Scaffold(
       backgroundColor: AppColors.darkMid,
       body: Stack(
         children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(gradient: AppColors.darkGradient),
-            ),
-          ),
-          // Cahaya lembut atas — warnanya mengikuti halaman
-          Positioned(
-            top: -110,
-            right: -80,
-            child: TweenAnimationBuilder<Color?>(
-              tween: ColorTween(end: accent),
-              duration: const Duration(milliseconds: 600),
-              builder: (context, color, _) {
-                final c = color ?? accent;
-                return Container(
-                  width: 320,
-                  height: 320,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        c.withValues(alpha: 0.26),
-                        c.withValues(alpha: 0.04),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          // Cahaya lembut bawah
-          Positioned(
-            bottom: -140,
-            left: -100,
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.14),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
           PageView.builder(
             controller: _controller,
             itemCount: _items.length,
@@ -166,88 +139,90 @@ class _OnboardingPageState extends State<OnboardingPage> {
       builder: (context, _) {
         final delta = (index - _page).clamp(-1.0, 1.0);
         final fade = (1 - delta.abs()).clamp(0.0, 1.0);
-        final w = MediaQuery.sizeOf(context).width;
+        final size = MediaQuery.sizeOf(context);
+        final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 68, bottom: 160),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Transform.translate(
-                    offset: Offset(delta * w * 0.15, 0),
-                    child: Opacity(
-                      opacity: fade,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: _ImageCard(item: item),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Transform.translate(
-                  offset: Offset(delta * w * 0.3, 0),
-                  child: Opacity(
-                    opacity: fade,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 3,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  gradient: AppColors.goldGradient,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${(index + 1).toString().padLeft(2, '0')}  •  ${item.tag}',
-                                style: TextStyle(
-                                  color: AppColors.gold.withValues(alpha: 0.95),
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.6,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            item.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              height: 1.2,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            item.description,
-                            style: const TextStyle(
-                              color: AppColors.onDarkMuted,
-                              fontSize: 14.5,
-                              height: 1.6,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+        return Stack(
+          children: [
+            // Gambar sebagai latar, memenuhi bagian atas layar
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: size.height * item.heightFactor,
+              child: Opacity(
+                opacity: (0.35 + 0.65 * fade).clamp(0.0, 1.0),
+                child: _BackdropImage(item: item),
+              ),
             ),
-          ),
+            // Teks di bagian bawah, di atas area gradasi
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 150 + bottomInset,
+              child: Transform.translate(
+                offset: Offset(delta * size.width * 0.3, 0),
+                child: Opacity(
+                  opacity: fade,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 3,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                gradient: AppColors.goldGradient,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${(index + 1).toString().padLeft(2, '0')}  •  ${item.tag}',
+                              style: TextStyle(
+                                color: AppColors.gold.withValues(alpha: 0.95),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.6,
+                                shadows: _textShadow,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          item.title,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            shadows: _textShadow,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          item.description,
+                          style: TextStyle(
+                            color: AppColors.onDarkMuted,
+                            fontSize: 14.5,
+                            height: 1.6,
+                            letterSpacing: 0.1,
+                            shadows: _textShadow,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -267,44 +242,57 @@ class _OnboardingPageState extends State<OnboardingPage> {
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                padding: const EdgeInsets.fromLTRB(5, 5, 14, 5),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primaryDeep, Color(0xFF062016)],
-                  ),
-                  border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.7),
-                    width: 1.2,
-                  ),
+                  color: AppColors.darkMid.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
                 ),
-                child: const Stack(
-                  alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.shield_rounded,
-                      color: AppColors.primaryLight,
-                      size: 27,
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.primaryDeep, Color(0xFF062016)],
+                        ),
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.7),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: const Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.shield_rounded,
+                            color: AppColors.primaryLight,
+                            size: 24,
+                          ),
+                          Icon(
+                            Icons.directions_car_rounded,
+                            color: Colors.white,
+                            size: 11,
+                          ),
+                        ],
+                      ),
                     ),
-                    Icon(
-                      Icons.directions_car_rounded,
-                      color: Colors.white,
-                      size: 13,
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Smart Car Safety',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Smart Car Safety',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
                 ),
               ),
               const Spacer(),
@@ -316,7 +304,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   child: TextButton(
                     onPressed: _skip,
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.onDarkMuted,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
@@ -324,10 +312,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                         side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.14),
+                          color: Colors.white.withValues(alpha: 0.22),
                         ),
                       ),
-                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      backgroundColor: AppColors.darkMid.withValues(alpha: 0.45),
                     ),
                     child: const Text(
                       'Lewati',
@@ -374,7 +362,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     decoration: BoxDecoration(
                       color: active
                           ? AppColors.gold
-                          : Colors.white.withValues(alpha: 0.2),
+                          : Colors.white.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: active
                           ? [
@@ -458,63 +446,51 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 }
 
-// ───────────────────────── Kartu gambar ─────────────────────────
+// ───────────────────────── Gambar latar ─────────────────────────
 
-class _ImageCard extends StatelessWidget {
-  const _ImageCard({required this.item});
+/// Gambar penuh lebar tanpa bingkai. Gradasi gelap hanya ada di bagian bawah
+/// (mulai dari [_OnboardingItem.fadeStart]), jadi bagian atas gambar tetap
+/// bersih dan teks di bawah tetap terbaca.
+class _BackdropImage extends StatelessWidget {
+  const _BackdropImage({required this.item});
 
   final _OnboardingItem item;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primaryDeep, Color(0xFF062016)],
+    final bg = AppColors.darkMid;
+    final f = item.fadeStart;
+    final span = 1 - f;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          item.image,
+          fit: BoxFit.cover,
+          alignment: Alignment(0, item.alignY),
+          errorBuilder: (_, __, ___) => _Fallback(item: item),
         ),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: item.accent.withValues(alpha: 0.22),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Padding(
-            padding: EdgeInsets.all(item.contain ? 20 : 0),
-            child: Image.asset(
-              item.image,
-              fit: item.contain ? BoxFit.contain : BoxFit.cover,
-              alignment: Alignment.center,
-              errorBuilder: (_, __, ___) => _Fallback(item: item),
-            ),
-          ),
-          // Vinyet halus agar gambar menyatu dengan latar gelap
-          IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.55, 1.0],
-                  colors: [
-                    Colors.transparent,
-                    AppColors.darkMid.withValues(alpha: 0.5),
-                  ],
-                ),
+        // Gradasi hanya ke bawah
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.0, f, f + span * 0.35, f + span * 0.7, 1.0],
+                colors: [
+                  bg.withValues(alpha: 0.0),
+                  bg.withValues(alpha: 0.0),
+                  bg.withValues(alpha: 0.62),
+                  bg.withValues(alpha: 0.94),
+                  bg,
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -555,7 +531,9 @@ class _OnboardingItem {
   final String description;
   final IconData icon;
   final Color accent;
-  final bool contain;
+  final double alignY;
+  final double heightFactor;
+  final double fadeStart;
 
   const _OnboardingItem({
     required this.image,
@@ -564,6 +542,8 @@ class _OnboardingItem {
     required this.description,
     required this.icon,
     required this.accent,
-    this.contain = false,
+    this.alignY = 0,
+    this.heightFactor = 1.0,
+    this.fadeStart = 0.40,
   });
 }
